@@ -1,125 +1,127 @@
 #####################
 #Libraries and Functions 
 #####################
-library(vegan) #https://cran.r-project.org/web/packages/vegan/index.html
-library(plyr) #http://myweb.facstaff.wwu.edu/minerb2/biometrics/plyr.html
 library(phyloseq) #https://www.bioconductor.org/packages/release/bioc/html/phyloseq.html
-'%notin%' = Negate('%in%')#https://stackoverflow.com/questions/38351820/negation-of-in-in-r
 
-
-#https://www.webpages.uidaho.edu/~stevel/519/How%20to%20get%20correlation%20between%20two%20categorical%20variable%20and%20a%20categorical%20variable%20and%20continuous%20variable.html
-#https://rpubs.com/hoanganhngo610/558925
 #####################
 #Load Files 
 #####################
-#Sample Data and Phyloseq from Previous Subsetting Step 
-map = read.csv("IBS_1Year.csv")
+setwd("~/Desktop/IBS/")
+map = read.csv("IBS_1Year_IBS.csv")
+
+
+#Recatergorize binned breastfeeding based on Swedish recommendations 
+map$Total_Breastfeeding_Binned = ifelse(is.na(map$Total_breastfeeding.mo.), NA, 
+                                        ifelse(map$Total_breastfeeding.mo. <= 4, "1-4", 
+                                               ifelse(map$Total_breastfeeding.mo. <= 6, "5-6", "7-9")))
+map$Exclusive_Breastfeeding_Binned = ifelse(is.na(map$Exclusive_breastfeeding.mo.), NA, 
+                                        ifelse(map$Exclusive_breastfeeding.mo. <= 4, "1-4", 
+                                               ifelse(map$Exclusive_breastfeeding.mo. <= 6, "5-6", "7-9")))
 
 ################################
-#Create list of columns to compare 
+#Create list of columns to compare
+#Remove factors with too many or two few subfactors, and those will category with only two participants 
 ################################
 Confounders_list = colnames(map)
 
 for (current_Confounder in Confounders_list) {
-  if (length(unique(map[,current_Confounder])) >= 10 | length(unique(map[,current_Confounder])) == 1) {
+  if (length(unique(map[,current_Confounder])) >= 10 | 
+      length(unique(map[,current_Confounder])) == 1) {
     Confounders_list = subset(Confounders_list, Confounders_list != current_Confounder)
-    #print(current_Confounder)
+  print(current_Confounder)
   } else {
     XXX = data.frame(table(map[,current_Confounder]))
-    
-    if (min(XXX$Freq) <= 4) {
+
+    if (min(XXX$Freq) <= 2) {
       Confounders_list = subset(Confounders_list, Confounders_list != current_Confounder)
       #print(current_Confounder)
     }
   }
 }
 
+
 Confounders_list = subset(Confounders_list, ! Confounders_list %in% 
-                            c("abp_Multiple","k_Combined","r_Combined",
-                              "Any","abisnr","abp2","abp5","abp8","abp12",
-                              "abp20","k58","k590","k59","k591","k598",
-                              "k599","r10","r104",
-                              "County", "AllAges",
-                              "Exclusive_Breastfeeding_Binned_Old" ,"Total_Breastfeeding_Binned_Old",
-                              "Intro_formula_Binned_Old","Intro_CowsMilk_Binned_Old",
-                              "Intro_Gluten_Binned_Old","Intro_Fish_Binned_Old" ))
+                            c(     "cdABP", "srABP", "cdsrABP", "cdFG", "IBS",
+                                   "Any","abisnr","abp2","abp5","abp8","abp12",
+                                   "abp20","k58","k590","k59","k591","k598",
+                                   "k599","r10","r104",
+                                   "AllAges", "Autoimmune_2_groups", "County", 
+                                   "DQ2", "DQ8", "DQ6"))
 
 ################################
-#### Factors impacting Autoimmune Development 
-################################
-#create new dataframes for Cases or FAID_Nos
-
-environmental_list = Confounders_list
-
-current_variable = "Siblings_at_birth"
+#Test between controls and all ABP/IBS subgroups 
 Case_Confounders = data.frame()
 
-map$abp_Combined = ifelse(map$abp_Multiple == "No", "No", "Any")
-table(map$Any)
-
-for (current_variable in environmental_list) {
+for (current_variable in Confounders_list) {
   set.seed(3)
-  #Create a new dataframe of subjects with information on the current variable 
+  #Remove rows with Na's for current variable
   map_subset_current = subset(map, is.na(map[,current_variable]) == F)
-  map_subset_current$abp_Combined = ifelse(map_subset_current$abp_Multiple == "No", "No", "Any")
+  all_current = data.frame()
   if (nrow(data.frame(table(map_subset_current[,current_variable]))) > 1) {
-    None = subset(map_subset_current, map_subset_current$Any == "No")[,current_variable]
-    Any = subset(map_subset_current, map_subset_current$Any == "Yes")[,current_variable]
-    R = subset(map_subset_current, map_subset_current$r_Combined == "Any")[,current_variable]
-    K = subset(map_subset_current, map_subset_current$k_Combined == "Any")[,current_variable]
-    abp = subset(map_subset_current, map_subset_current$abp_Combined == "Any")[,current_variable]
-    
-    #Any
-    Any_pvalue = data.frame("Group" = c(rep("None", length(None)),
-                                       rep("Any", length(Any))), 
-                           "Variable" = c(None, Any))
-    Any_pvalue = chisq.test(Any_pvalue$Variable, Any_pvalue$Group, 
-                            simulate.p.value = T)
-    Any_pvalue = Any_pvalue$p.value
-    
-    #r_Combined
-    set.seed(1)
-    R_pvalue = data.frame("Group" = c(rep("None", length(None)),
-                                        rep("R", length(R))), 
-                            "Variable" = c(None, R))
-    R_pvalue = chisq.test(R_pvalue$Variable, R_pvalue$Group, 
-                            simulate.p.value = T)
-    R_pvalue = R_pvalue$p.value
-    
-    #abp
-    abp_pvalue = data.frame("Group" = c(rep("None", length(None)),
-                                        rep("abp", length(abp))), 
-                            "Variable" = c(None, abp))
-    abp_pvalue = chisq.test(abp_pvalue$Variable, abp_pvalue$Group, 
-                            simulate.p.value = T)
-    abp_pvalue = abp_pvalue$p.value
-    
-    #Any
-    K_pvalue = data.frame("Group" = c(rep("None", length(None)),
-                                        rep("K", length(K))), 
-                            "Variable" = c(None, K))
-    K_pvalue = chisq.test(K_pvalue$Variable, K_pvalue$Group, 
-                            simulate.p.value = T)
-    K_pvalue = K_pvalue$p.value
-    
-    #Bind the pvalue and variable to master dataframe 
-    current_row = data.frame("Variable" = current_variable, 
-                             "Any" = Any_pvalue,
-                             "r_Combined" = R_pvalue,
-                             "k_Combined" = K_pvalue, 
-                             "abp_Multiple" = abp_pvalue)
-    Case_Confounders = rbind(Case_Confounders, current_row)
+    for (current_group in c("cdABP","srABP", "cdsrABP")) {
+      if (current_group == "cdsrABP") {
+        subset_df = map_subset_current
+        subset_df$IBS = ifelse(subset_df$IBS == "Control", "Control", "cdsrABP")
+      } else {
+        subset_df = subset(map_subset_current, map_subset_current$IBS %in% c("Control", current_group))
+      }
+      
+      subset_df = subset_df[,c("IBS",current_variable)]
+      colnames(subset_df) = c("Group", "Variable")
+      current_pvalue = chisq.test(subset_df$Variable, subset_df$Group, 
+                              simulate.p.value = T)
+      current_pvalue = current_pvalue$p.value
+      
+      p_row = data.frame("Variable" = current_variable, 
+                         "Group" = current_group, 
+                         "P" = current_pvalue)
+      colnames(p_row) = c("Variable", "Group", "P")
+      all_current = rbind(all_current, p_row)
+    }
+  }
+  all_current$padj = p.adjust(all_current$P, "BH" )
+  Case_Confounders = rbind(Case_Confounders, all_current)
+}
+
+Case_Confounders_Sign = subset(Case_Confounders, Case_Confounders$P <= 0.05)
+
+write.csv(Case_Confounders, "./CSV_Files/ChiSq_all_2.csv")
+
+
+###################
+#Create dataframe of proportions across IBS groups of significant variables
+All_data = data.frame()
+for (current_column in c("Control", "cdsrABP",
+                         "srABP",  "cdABP" )) {
+  if (current_column == "cdsrABP") {
+    current_data = subset(map, map$IBS != "Control")
+  } else {
+    current_data = subset(map, map$IBS == current_column)
+  }
+  print(paste(current_column, nrow(current_data)))
+  
+  current_col = data.frame()
+  for (current_variable in c(unique(Case_Confounders_Sign$Variable)) ){
+    current_data_1 = round(table(current_data[,current_variable])/nrow(current_data),3)*100
+    current_data_2 = data.frame("Variable" = current_variable,
+                                "Current" = current_data_1)
+    colnames(current_data_2) = c("Variable", "Subvariable", "Group")
+    current_col = rbind(current_col, current_data_2)
+  }
+  
+  while (nrow(current_col) < nrow(All_data)) {
+    current_col = rbind(current_col, 
+                        data.frame("Variable" = NA, 
+                                   "Subvariable" = NA, 
+                                   "Group" = NA))
+  }
+  colnames(current_col) = c("Variable","Subvariable",current_column)
+  
+  if (nrow(All_data) == 0) {
+    All_data = current_col
+  } else {
+    All_data = cbind(All_data, current_col)
   }
 }
 
-Case_Confounders$Any_FDR = p.adjust(Case_Confounders$Any, method = "BH")
-Case_Confounders$abp_FDR = p.adjust(Case_Confounders$abp_Multiple, method = "BH")
-Case_Confounders$k_FDR = p.adjust(Case_Confounders$k_Combined, method = "BH")
-Case_Confounders$r_FDR = p.adjust(Case_Confounders$r_Combined, method = "BH")
 
-Case_Confounders_Sign = subset(Case_Confounders, Case_Confounders$Any <= 0.05 | 
-                                 Case_Confounders$abp_Multiple <= 0.05 | 
-                                 Case_Confounders$k_Combined <= 0.05 | 
-                                 Case_Confounders$r_Combined <= 0.05)
-
-#write.csv(Case_Confounders_Sign, "./CSV_Files/ChiSq_1.csv")
