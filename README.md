@@ -4,6 +4,7 @@
 2. Metadata for ABIS Infants 
 3. Phyloseq object for ABIS Infant Stool samples 
 4. CSV file for Age of diagnosis 
+
 **Outputs:**
 1. Sample Sheet of Related IBS data 
 2. Phyloseq object for selected IBS subjects and controls 
@@ -41,6 +42,7 @@
 ### Step 9: Picrust File Generation  
 **Inputs:** 
 1. IBS phyloseq object 
+
 **Outputs:**
 1. FASTA with identifiers (Genera_RowNumber) and ASV sequence
 2. Count of total abundance per subject and identifier
