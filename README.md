@@ -46,7 +46,7 @@
 2. Count of total abundance per subject and identifier
     - picrust2 script:
         - conda activate picrust2
-        - picrust2_pipeline.py -s IBS_TotalAbun.fasta -i IBS_count_RawCount.tsv -o RawCounts -p 2
+        - picrust2_pipeline.py -s IBS_TotalAbun.fasta -i IBS_count_TotalAbun.tsv -o RawCounts -p 2
 
 ### Step 10: Picrust Analysis 
 **Inputs:** 
