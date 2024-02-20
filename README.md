@@ -4,7 +4,6 @@
 2. Metadata for ABIS Infants 
 3. Phyloseq object for ABIS Infant Stool samples 
 4. CSV file for Age of diagnosis 
-
 **Outputs:**
 1. Sample Sheet of Related IBS data 
 2. Phyloseq object for selected IBS subjects and controls 
@@ -38,21 +37,23 @@
 **Inputs:** 
 **Outputs:**
 
+
 ### Step 9: Picrust File Generation  
 **Inputs:** 
+1. IBS phyloseq object 
 **Outputs:**
+1. FASTA with identifiers (Genera_RowNumber) and ASV sequence
+2. Count of total abundance per subject and identifier
+    - picrust2 script:
+        - conda activate picrust2
+        - picrust2_pipeline.py -s IBS_TotalAbun.fasta -i IBS_count_RawCount.tsv -o RawCounts -p 2
 
 ### Step 10: Picrust Analysis 
 **Inputs:** 
 **Outputs:**
 
+
 ### Step 11: Environmental Confounders 
+**Inputs:** 
+**Outputs:**
 
-
-
-
-
-# IBS
-
-Alpha_Diversity - Figure 2 
-PIME_PCOA - Supplemental Figure 1
