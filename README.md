@@ -52,7 +52,14 @@
 
 ### Step 10: Picrust Analysis 
 **Inputs:** 
+1. IBS phyloseq object
+2. KO_metagenome_out/pred_metagenome_unstrat.tsv
+3. KO_metagenome_out/ko_info.csv
+   - https://github.com/picrust/picrust2/tree/master/picrust2/default_files/description_mapfiles
+     
 **Outputs:**
+1. csv of significant predictions
+2. boxplots of significant predictions
 
 
 ### Step 11: Environmental Confounders 
