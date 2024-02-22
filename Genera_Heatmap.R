@@ -23,8 +23,10 @@ length(unique(Lefse$feature)) #14
 #Find genera overlapping between P&A P&L
 PIME_Lefse = intersect(PIME$Genus, Lefse$feature)
 PIME_Aldex = intersect(PIME$Genus, Aldex$feature)
-MDA_Count = unique(c(PIME_Aldex, PIME_Lefse))
+Lefse_Aldex = intersect(Lefse$feature, Aldex$feature)
 
+MDA_Count = unique(c(PIME_Aldex, PIME_Lefse))
+MDA_Count = unique(c(MDA_Count, Lefse_Aldex))
 #Subset if TAXA were found to be significant 
 OG_taxa = subset(OG_taxa, OG_taxa$Genus %in% MDA_Count)
 
