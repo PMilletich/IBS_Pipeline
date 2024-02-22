@@ -32,9 +32,12 @@
 **Outputs:**
 1. Boxplots of rarefied alpha diversity
 
-### Step 5: Phyla Wilcoxon 
+### Step 5: Phyla Wilcoxon: Phyla_Wilcox.R
 **Inputs:** 
+1. IBS Phyloseq Object
+
 **Outputs:**
+1. Boxplots of Significant phyla differences
 
 ### Step 6: PIME OOB: PIME_Prevalence.R
 **Inputs:** 
@@ -84,7 +87,13 @@
 1. Boxplot of relative abundance of predicted pathways
 2. Boxplot of predicted pathways vs. heterogeneous factors 
 
-### Step 11: Environmental Confounders 
+### Step 11: Environmental Confounders: Genera_Confounders.R
 **Inputs:** 
+1. IBS Phyloseq
+2. Heterogeneous CSV Files from Step 2
+3. LEFSE CSV from Step 7
+4. ALDEX CSV from Step 7
+5. PIME CSV from Step 6
 **Outputs:**
+1. Boxplot of significant confounders 
 
