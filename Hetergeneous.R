@@ -1,7 +1,12 @@
 #####################
 #Libraries and Functions 
 #####################
+#library(vegan) #https://cran.r-project.org/web/packages/vegan/index.html
+#library(plyr) #http://myweb.facstaff.wwu.edu/minerb2/biometrics/plyr.html
 library(phyloseq) #https://www.bioconductor.org/packages/release/bioc/html/phyloseq.html
+library(epitools)
+library(ggplot2)
+library(scales)
 
 #####################
 #Load Files 
@@ -10,7 +15,7 @@ setwd("~/Desktop/IBS/")
 map = read.csv("IBS_1Year_IBS.csv")
 
 
-#Recatergorize binned breastfeeding based on Swedish recommendations 
+#Recatergorize binned breastfeeding based on swedish recommendations 
 map$Total_Breastfeeding_Binned = ifelse(is.na(map$Total_breastfeeding.mo.), NA, 
                                         ifelse(map$Total_breastfeeding.mo. <= 4, "1-4", 
                                                ifelse(map$Total_breastfeeding.mo. <= 6, "5-6", "7-9")))
@@ -19,8 +24,7 @@ map$Exclusive_Breastfeeding_Binned = ifelse(is.na(map$Exclusive_breastfeeding.mo
                                                ifelse(map$Exclusive_breastfeeding.mo. <= 6, "5-6", "7-9")))
 
 ################################
-#Create list of columns to compare
-#Remove factors with too many or two few subfactors, and those will category with only two participants 
+#Create list of columns to compare 
 ################################
 Confounders_list = colnames(map)
 
@@ -48,13 +52,17 @@ Confounders_list = subset(Confounders_list, ! Confounders_list %in%
                                    "AllAges", "Autoimmune_2_groups", "County", 
                                    "DQ2", "DQ8", "DQ6"))
 
+#### Factors impacting Autoimmune Development 
 ################################
-#Test between controls and all ABP/IBS subgroups 
+#create new dataframes for Cases or FAID_Nos
+
+Confounders_list = Confounders_list
+
+current_variable = "Siblings_at_birth"
 Case_Confounders = data.frame()
 
 for (current_variable in Confounders_list) {
   set.seed(3)
-  #Remove rows with Na's for current variable
   map_subset_current = subset(map, is.na(map[,current_variable]) == F)
   all_current = data.frame()
   if (nrow(data.frame(table(map_subset_current[,current_variable]))) > 1) {
@@ -85,43 +93,65 @@ for (current_variable in Confounders_list) {
 
 Case_Confounders_Sign = subset(Case_Confounders, Case_Confounders$P <= 0.05)
 
+Case_Confounders_2 = subset(Case_Confounders, Case_Confounders$Variable %in% 
+                              Case_Confounders_Sign$Variable)
 write.csv(Case_Confounders, "./CSV_Files/ChiSq_all_2.csv")
 
-
-###################
-#Create dataframe of proportions across IBS groups of significant variables
 All_data = data.frame()
-for (current_column in c("Control", "cdsrABP",
+for (current_column in c("cdsrABP",
                          "srABP",  "cdABP" )) {
   if (current_column == "cdsrABP") {
-    current_data = subset(map, map$IBS != "Control")
+    current_data = map
+    current_data$IBS = ifelse(current_data$IBS == "Control", 
+                              "Control", "cdsrABP")
   } else {
-    current_data = subset(map, map$IBS == current_column)
+    current_data = subset(map, map$IBS %in% c(current_column, "Control"))
   }
-  print(paste(current_column, nrow(current_data)))
+
+  current_data$IBS = factor(current_data$IBS, 
+                            levels= c(current_column, "Control"))
   
   current_col = data.frame()
   for (current_variable in c(unique(Case_Confounders_Sign$Variable)) ){
-    current_data_1 = round(table(current_data[,current_variable])/nrow(current_data),3)*100
-    current_data_2 = data.frame("Variable" = current_variable,
-                                "Current" = current_data_1)
-    colnames(current_data_2) = c("Variable", "Subvariable", "Group")
-    current_col = rbind(current_col, current_data_2)
-  }
-  
-  while (nrow(current_col) < nrow(All_data)) {
-    current_col = rbind(current_col, 
-                        data.frame("Variable" = NA, 
-                                   "Subvariable" = NA, 
-                                   "Group" = NA))
-  }
-  colnames(current_col) = c("Variable","Subvariable",current_column)
-  
-  if (nrow(All_data) == 0) {
-    All_data = current_col
-  } else {
-    All_data = cbind(All_data, current_col)
+   print(current_variable)
+     current_table = table(current_data$IBS, current_data[,current_variable])
+    OR = oddsratio(current_table)
+    print(OR$data)
+    p = OR$p.value[2,3]
+    OR_value = OR$measure[2,1]
+    UL_value = OR$measure[2,3]
+    LL_value = OR$measure[2,2]
+    
+    current_data_2 = data.frame("Group" = current_column,
+                                "Variable" = current_variable,
+                                "OR" = OR_value, 
+                                "UL" = UL_value, 
+                                "LL" = LL_value
+                                )
+
+    All_data = rbind(All_data, current_data_2)
   }
 }
 
-
+forest_plot = ggplot(All_data) + theme_bw() + 
+  geom_segment(aes(x = UL, xend = LL, y = Group, yend = Group, 
+                   color = Group), linewidth = 1) + 
+  geom_point(aes(x = OR, y = Group, color = Group), size = 2) + 
+  scale_color_manual(breaks = c("cdsrABP", "srABP", 
+                                "cdABP", "Control"), 
+                     values = c("#65ACEA", "#F9D057",
+                                "#D05783", "grey25")) + 
+  facet_wrap(~Variable, nrow = 3) + 
+  theme(legend.position = 'top') + 
+  geom_vline(xintercept = 1) + 
+  xlab("Odds Ratio (95% Confidence Interval)") + 
+  ylab(element_blank()) + 
+  coord_cartesian(xlim = c(-0.75, 4.5)) + 
+  geom_text(data = Case_Confounders_2, 
+            aes(x = -0.5, y = Group, 
+                label = paste("p=",scientific(P, 2), sep = "")),
+            size = 3.5);forest_plot
+jpeg("./Images/IBS_4/forest_plot.jpeg",
+     res = 400, height = 2000, width = 2000)
+forest_plot
+dev.off()
